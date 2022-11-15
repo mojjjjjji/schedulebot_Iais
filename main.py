@@ -28,6 +28,6 @@ def get_user_text(message):
         local_time = local_time * 60
         time.sleep(local_time)
         bot.send_message(message.chat.id, f'+text', parse_mode='html')
-
+print('sos')
 
 bot.polling(none_stop=True, interval=0)
