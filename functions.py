@@ -1,53 +1,41 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from datetime import datetime
-#Создание формы для заполнения даты и времени
-def mode_inline_keyboard(text=None, call_data=None, row=None, current_form=None):
-    if text == None and call_data == None and row == None and current_form == None:
-        months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
-        touple_mon = ()
+
+
+def inline_keyboard_for_delete(name_form=None, counts=None, number=None, id_reminder=None):
+    if name_form == 'start':
+        key_num = ()
         form = InlineKeyboardMarkup()
-        form.add(InlineKeyboardButton('Год:', callback_data='year_text'))
-        form.row(InlineKeyboardButton(str(datetime.today().year), callback_data='save_yearResult'), InlineKeyboardButton('➕', callback_data='plus_year'), InlineKeyboardButton('➖', callback_data='minus_year'))
-        
-        form.add(InlineKeyboardButton('Месяц:', callback_data='month_text'))
-        form.add(InlineKeyboardButton('Выберите месяц 👇', callback_data='save_monthResult'))
-
-        for mon in months[:4]:
-            touple_mon += (InlineKeyboardButton(mon, callback_data=str(months.index(mon))+'_month'),)
-        
-        form.row(*touple_mon)
-        touple_mon = ()
-
-        for mon in months[4:8]:
-            touple_mon += (InlineKeyboardButton(mon, callback_data=str(months.index(mon))+'_month'),)
-
-        form.row(*touple_mon)
-        touple_mon = ()
-
-        for mon in months[8:]:
-            touple_mon += (InlineKeyboardButton(mon, callback_data=str(months.index(mon))+'_month'),)
-        
-        form.row(*touple_mon)
-
-        form.add(InlineKeyboardButton('День:', callback_data='day_text'))
-        form.row(InlineKeyboardButton(str(datetime.today().day), callback_data='save_dayResult'), InlineKeyboardButton('➕', callback_data='plus_day'), InlineKeyboardButton('➖', callback_data='minus_day'))
-        
-        hour = str(datetime.now().hour)
-        if len(hour) == 1:
-            hour = '0' + hour
-        minute = str(datetime.now().minute)
-        if len(minute) == 1:
-            minute = '0' + minute
-
-        form.add(InlineKeyboardButton('Время:', callback_data='time_text'))
-        form.row(InlineKeyboardButton(hour, callback_data='save_hourResult'), InlineKeyboardButton('➕', callback_data='plus_hour'), InlineKeyboardButton('➖', callback_data='minus_hour'))
-        form.row(InlineKeyboardButton(minute, callback_data='save_minuteResult'), InlineKeyboardButton('➕', callback_data='plus_minute'), InlineKeyboardButton('➖', callback_data='minus_minute'))
-
-        form.add(InlineKeyboardButton('✅ Сохранить', callback_data='save_but'))
-
+        for count in range(counts):
+                key_num += (InlineKeyboardButton(count+1, callback_data=str(id_reminder[count]) +'_number'),)
+        form.row(*key_num)
         return form
-
-    else:
-        #Изменение кнопки
-        current_form['inline_keyboard'][row][0] = InlineKeyboardButton(text, callback_data=call_data)
-        return current_form
+    elif name_form == 'number':
+        form = InlineKeyboardMarkup()
+        form.row(InlineKeyboardButton('🔧Редактировать', callback_data=str(number) +'_edit'),InlineKeyboardButton('🚫Удалить', callback_data=str(number) +'_delete'))
+        form.add(InlineKeyboardButton('🔙Вернуться к списку', callback_data='key_back'))
+        return form
+    #Редактирование
+    elif name_form == 'edit':
+        form = InlineKeyboardMarkup()
+        form.row(InlineKeyboardButton('📃Описание', callback_data=str(number) +'_editDescription'),InlineKeyboardButton('📅Дату', callback_data=str(number) +'_editDate'),InlineKeyboardButton('⏱Время', callback_data=str(number) +'_editTime'))
+        #form.add(InlineKeyboardButton('Сразу все', callback_data='editAll'))
+        form.add(InlineKeyboardButton('🔙Вернуться к списку', callback_data='key_back'))
+        return form
+    #Удаление
+    elif name_form == 'delete':
+        form = InlineKeyboardMarkup()
+        form.add(InlineKeyboardButton('🔙Вернуться к списку', callback_data='key_back'))
+        return form
+    elif name_form == 'editDescription':
+        form = InlineKeyboardMarkup()
+        form.add(InlineKeyboardButton('🔙Вернуться к списку', callback_data='key_back'))
+        return form
+    elif name_form == 'editDate':
+        form = InlineKeyboardMarkup()
+        form.add(InlineKeyboardButton('🔙Вернуться к списку', callback_data='key_back'))
+        return form
+    elif name_form == 'editTime':
+        form = InlineKeyboardMarkup()
+        form.add(InlineKeyboardButton('🔙Вернуться к списку', callback_data='key_back'))
+        return form
