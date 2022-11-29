@@ -2,13 +2,13 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from datetime import datetime
 
 
-def inline_keyboard_for_delete(name_form=None, counts=None, number=None, id_reminder=None):
+def inline_keyboard_all(name_form=None, counts=None, number=None, id_reminder=None):
     if name_form == 'start':
         key_num = ()
         form = InlineKeyboardMarkup(row_width=4)
         for count in range(counts):
                 key_num += (InlineKeyboardButton(count+1, callback_data=str(id_reminder[count]) +'_number'),)
-        form.row(*key_num)
+        form.add(*key_num)
         return form
     elif name_form == 'number':
         form = InlineKeyboardMarkup()
