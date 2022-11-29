@@ -5,7 +5,7 @@ from datetime import datetime
 def inline_keyboard_for_delete(name_form=None, counts=None, number=None, id_reminder=None):
     if name_form == 'start':
         key_num = ()
-        form = InlineKeyboardMarkup()
+        form = InlineKeyboardMarkup(row_width=4)
         for count in range(counts):
                 key_num += (InlineKeyboardButton(count+1, callback_data=str(id_reminder[count]) +'_number'),)
         form.row(*key_num)
