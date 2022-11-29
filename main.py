@@ -203,7 +203,7 @@ async def cancel_handler(message: types.Message, state):
             async with state.proxy() as data:
                 data['allRecord'] = len(bd)
             #Вызов формы для редактирования
-            form = inline_keyboard_for_delete('start', len(bd), ' ', id_reminder)
+            form = inline_keyboard_all('start', len(bd), ' ', id_reminder)
             await bot.send_message(message.from_user.id, ansMsg, reply_markup=form)    
     connection.close()
          
@@ -237,12 +237,12 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
             #Изменение текста в сообщении
             await bot.edit_message_text(chat_id=call.from_user.id,message_id=call.message.message_id, text=ansMsg)
         connection.close()
-        inlkb = inline_keyboard_for_delete('number', ' ', call.data.split('_')[0])
+        inlkb = inline_keyboard_all('number', ' ', call.data.split('_')[0])
         #Изменение клавиатуры. Id пользователя, Id сообщения, новая форма
         await bot.edit_message_reply_markup(call.from_user.id, call.message.message_id, reply_markup=inlkb)   
     #Кнопка редактирования
     elif call.data.split('_')[1] == 'edit':
-        inlkb = inline_keyboard_for_delete('edit', ' ', call.data.split('_')[0])
+        inlkb = inline_keyboard_all('edit', ' ', call.data.split('_')[0])
         #Изменение клавиатуры. Id пользователя, Id сообщения, новая форма
         await bot.edit_message_reply_markup(call.from_user.id, call.message.message_id, reply_markup=inlkb)
     #Кнопка удаления
@@ -264,7 +264,7 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
             keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('Создать напоминание')).add(KeyboardButton('Мои напоминания'))
             # await bot.send_message(chat_id= message.from_user.id, text='Напоминание успешно удалено', reply_markup=keyboard)
         connection.close()
-        inlkb = inline_keyboard_for_delete('delete')
+        inlkb = inline_keyboard_all('delete')
         #Изменение текста в сообщении
         await bot.edit_message_text(chat_id=call.from_user.id,message_id=call.message.message_id, text='Напоминание успешно удалено.')
         #Изменение клавиатуры. Id пользователя, Id сообщения, новая форма
@@ -306,7 +306,7 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
                     ansMsg += '\n'
                     ansMsg += 'Выберите номер для редактирования:👇'
                     #Вызов формы для редактирования
-                    inlkb = inline_keyboard_for_delete('start', len(bd), ' ', id_reminder)
+                    inlkb = inline_keyboard_all('start', len(bd), ' ', id_reminder)
                     #Изменение текста в сообщении
                     await bot.edit_message_text(chat_id=call.from_user.id,message_id=call.message.message_id, text=ansMsg)
                     #Изменение клавиатуры. Id пользователя, Id сообщения, новая форма
@@ -333,7 +333,7 @@ async def load_description(message: types.Message, state: FSMContext):
             with connection.cursor() as cursor:
                 cursor.execute(f"UPDATE reminder_bot.info_table SET `description` = '{data['newDescription']}' WHERE `id_reminder` = {data['id_reminder']}")
                 connection.commit()
-                inlkb = inline_keyboard_for_delete('editDescription')
+                inlkb = inline_keyboard_all('editDescription')
 
                 cursor.execute(f"SELECT * FROM reminder_bot.info_table WHERE `user_id` = '{message.from_user.id}' ORDER BY `date` ASC, `time` ASC")
                 bd = cursor.fetchall()
@@ -348,7 +348,7 @@ async def load_description(message: types.Message, state: FSMContext):
                     ansMsg += '\n'
                     ansMsg += 'Выберите номер для редактирования:👇'
                     #Вызов формы для редактирования
-                    inlkb = inline_keyboard_for_delete('start', len(bd), ' ', id_reminder)
+                    inlkb = inline_keyboard_all('start', len(bd), ' ', id_reminder)
                     #Изменение текста в сообщении
                     await bot.edit_message_text(chat_id=message.from_user.id,message_id=data['message_id'], text=ansMsg)
                     #Изменение клавиатуры. Id пользователя, Id сообщения, новая форма
@@ -396,7 +396,7 @@ async def buttons(message: types.Message, state: FSMContext):
                     with connection.cursor() as cursor:
                         cursor.execute(f"UPDATE reminder_bot.info_table SET `date` = '{data['newDate']}' WHERE `id_reminder` = {data['id_reminder']}")
                         connection.commit()
-                        inlkb = inline_keyboard_for_delete('editDate', ' ', data['id_reminder'])
+                        inlkb = inline_keyboard_all('editDate', ' ', data['id_reminder'])
                         cursor.execute(f"SELECT * FROM reminder_bot.info_table WHERE `user_id` = '{message.from_user.id}' ORDER BY `date` ASC, `time` ASC")
                         bd = cursor.fetchall()
                         if not bd: #bd is None
@@ -410,7 +410,7 @@ async def buttons(message: types.Message, state: FSMContext):
                             ansMsg += '\n'
                             ansMsg += 'Выберите номер для редактирования:👇'
                             #Вызов формы для редактирования
-                            inlkb = inline_keyboard_for_delete('start', len(bd), ' ', id_reminder)
+                            inlkb = inline_keyboard_all('start', len(bd), ' ', id_reminder)
                     connection.close()
                     #Изменение текста в сообщении
                     await bot.edit_message_text(chat_id=message.from_user.id,message_id=data['message_id'], text=ansMsg)
@@ -454,7 +454,7 @@ async def buttons(message: types.Message, state: FSMContext):
                                 with connection.cursor() as cursor:
                                     cursor.execute(f"UPDATE reminder_bot.info_table SET `time` = '{data['newTime']}' WHERE `id_reminder` = {data['id_reminder']}")
                                     connection.commit()
-                                    inlkb = inline_keyboard_for_delete('editTime', ' ', data['id_reminder'])
+                                    inlkb = inline_keyboard_all('editTime', ' ', data['id_reminder'])
                                     cursor.execute(f"SELECT * FROM reminder_bot.info_table WHERE `user_id` = '{message.from_user.id}' ORDER BY `date` ASC, `time` ASC")
                                     bd = cursor.fetchall()
                                     if not bd: #bd is None
@@ -468,7 +468,7 @@ async def buttons(message: types.Message, state: FSMContext):
                                         ansMsg += '\n'
                                         ansMsg += 'Выберите номер для редактирования:👇'
                                         #Вызов формы для редактирования
-                                        inlkb = inline_keyboard_for_delete('start', len(bd), ' ', id_reminder)
+                                        inlkb = inline_keyboard_all('start', len(bd), ' ', id_reminder)
                                 connection.close()
                                 #Изменение текста в сообщении
                                 await bot.edit_message_text(chat_id=message.from_user.id,message_id=data['message_id'], text=ansMsg)
@@ -491,7 +491,7 @@ async def buttons(message: types.Message, state: FSMContext):
                             with connection.cursor() as cursor:
                                 cursor.execute(f"UPDATE reminder_bot.info_table SET `time` = '{data['newTime']}' WHERE `id_reminder` = {data['id_reminder']}")
                                 connection.commit()
-                                inlkb = inline_keyboard_for_delete('editTime', ' ', data['id_reminder'])
+                                inlkb = inline_keyboard_all('editTime', ' ', data['id_reminder'])
                                 cursor.execute(f"SELECT * FROM reminder_bot.info_table WHERE `user_id` = '{message.from_user.id}' ORDER BY `date` ASC, `time` ASC")
                                 bd = cursor.fetchall()
                                 if not bd: #bd is None
@@ -505,7 +505,7 @@ async def buttons(message: types.Message, state: FSMContext):
                                     ansMsg += '\n'
                                     ansMsg += 'Выберите номер для редактирования:👇'
                                     #Вызов формы для редактирования
-                                    inlkb = inline_keyboard_for_delete('start', len(bd), ' ', id_reminder)
+                                    inlkb = inline_keyboard_all('start', len(bd), ' ', id_reminder)
                             connection.close()
                             #Изменение текста в сообщении
                             await bot.edit_message_text(chat_id=message.from_user.id,message_id=data['message_id'], text=ansMsg)
