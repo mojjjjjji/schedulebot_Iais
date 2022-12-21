@@ -70,13 +70,42 @@ async def cancel_handler(message: types.Message, state):
 @dp.message_handler(state=FSMCreateReminder.description)
 async def load_description(message: types.Message, state: FSMContext):
     if len(message.text) <= 100:
-        await bot.send_message(message.from_user.id, '📅Напишите дату. \nФормат даты должен быть (дд.мм.гггг).')
+        keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('🔙Отмена')).add(KeyboardButton('📝Сохранить как заметку'))
+        await bot.send_message(message.from_user.id, '📅Напишите дату. \nФормат даты может быть:\n\nдд.мм.гггг\nсегодня\nзавтра\nпослезавтра\n\nИли нажмите "📝Сохранить как заметку"', reply_markup=keyboard)
         async with state.proxy() as data:
             data['description'] = message.text
         #Переход в след. этап состояния
         await FSMCreateReminder.next()
     else:
         await bot.send_message(chat_id= message.from_user.id, text='😐Размер сообщения не может превышать более 100 символов.\nПопробуйте еще раз')
+
+
+
+@dp.message_handler(Text(equals='📝Сохранить как заметку', ignore_case = True), state="*")
+async def cancel_handler(message: types.Message, state):
+    current_state = await state.get_state()
+    if current_state is None:
+        await message.answer('Возможно вы ввели неправильную команду.')
+        return  
+    async with state.proxy() as data:
+        #Подключение БД
+        connection = pymysql.connect(
+            host='195.2.71.149',
+            port=3306,
+            user='Bot',
+            password='6622156Aabel!',
+            database='reminder_bot',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+            #Запись в БД
+        with connection.cursor() as cursor:
+            cursor.execute(f"INSERT INTO reminder_bot.info_table (`user_id`, `description`, `id_reminder`) VALUES ('{message.from_user.id}', '{data['description']}', 0)")
+            connection.commit()
+        connection.close()
+        keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('Создать напоминание')).add(KeyboardButton('Мои напоминания'))
+        await bot.send_message(chat_id= message.from_user.id, text='Заметка успешно создана. \nГлавное меню.', reply_markup=keyboard)
+        #Закрыть состояние
+        await state.finish()
 
 
 
@@ -105,11 +134,49 @@ async def buttons(message: types.Message, state: FSMContext):
                 await bot.send_message(message.from_user.id, '⏱Напишите время. \nФормат времени должен быть (чч:мм).')
                 await FSMCreateReminder.next()
             else:
-                await bot.send_message(chat_id= message.from_user.id, text='😐Вы ввели неправильную дату. \nПопробуйте еще раз. Дата должна быть в будущем времени. \nФормат написания даты (дд.мм.гггг).')
+                await bot.send_message(chat_id= message.from_user.id, text='😐Вы ввели неправильную дату. \nПопробуйте еще раз. Дата должна быть в будущем времени. \n\nдд.мм.гггг\nсегодня\nзавтра\nпослезавтра.\n\nПопробуйте еще раз.\nИли нажмите "📝Сохранить как заметку"')
     else:
-        await bot.send_message(chat_id= message.from_user.id, text='😐Размер сообщения должен быть 10 символов.\nФормат написания даты (дд.мм.гггг).\nПопробуйте еще раз.')
-
-     
+        flag = False
+        words =  message.text.split(' ')
+        dictionary = ['сегодня', 'завтра', 'послезавтра']
+        async with state.proxy() as data:
+            for i in words:
+                for j in dictionary:
+                    if i == j:
+                        if j == 'сегодня':
+                            y = int(datetime.now().year)
+                            m = int(datetime.now().month)
+                            d = int(datetime.now().day)
+                            correct_date = f'{y}-{m}-{d}'
+                            data['date'] = correct_date
+                            await bot.send_message(message.from_user.id, '⏱Напишите время. \nФормат времени должен быть (чч:мм).')
+                            await FSMCreateReminder.next() 
+                            flag = True
+                            break
+                        elif j == 'завтра':
+                            y = int(datetime.now().year)
+                            m = int(datetime.now().month)
+                            d = int(datetime.now().day)+1
+                            correct_date = f'{y}-{m}-{d}'
+                            data['date'] = correct_date
+                            await bot.send_message(message.from_user.id, '⏱Напишите время. \nФормат времени должен быть (чч:мм).')
+                            await FSMCreateReminder.next()
+                            flag = True
+                            break
+                        else:
+                            y = int(datetime.now().year)
+                            m = int(datetime.now().month)
+                            d = int(datetime.now().day)+2
+                            correct_date = f'{y}-{m}-{d}'
+                            data['date'] = correct_date
+                            await bot.send_message(message.from_user.id, '⏱Напишите время. \nФормат времени должен быть (чч:мм).')
+                            await FSMCreateReminder.next()
+                            flag = True
+                            break
+        if not flag:
+            await bot.send_message(chat_id= message.from_user.id, text='😐Формат написания даты может быть:\n\nдд.мм.гггг\nсегодня\nзавтра\nпослезавтра.\n\nПопробуйте еще раз.\nИли нажмите "📝Сохранить как заметку"')        
+    
+                 
 
 #Этап 3, создание времени
 @dp.message_handler(state=FSMCreateReminder.time)
@@ -129,10 +196,10 @@ async def buttons(message: types.Message, state: FSMContext):
                         if nowDate.hour < int(hour) or (nowDate.hour == int(hour) and nowDate.minute < int(min)):
                             #Подключение БД
                             connection = pymysql.connect(
-                                host='localhost',
+                                host='195.2.71.149',
                                 port=3306,
-                                user='root',
-                                password='qwert123',
+                                user='Bot',
+                                password='6622156Aabel!',
                                 database='reminder_bot',
                                 cursorclass=pymysql.cursors.DictCursor
                             )
@@ -149,23 +216,23 @@ async def buttons(message: types.Message, state: FSMContext):
                             await bot.send_message(chat_id= message.from_user.id, text='😐Вы ввели неправильное время. \nПопробуйте еще раз. Время должно быть в будущем. \nФормат написания времени (чч:мм)')
                     else:
                         #Подключение БД
-                            connection = pymysql.connect(
-                                host='localhost',
-                                port=3306,
-                                user='root',
-                                password='qwert123',
-                                database='reminder_bot',
-                                cursorclass=pymysql.cursors.DictCursor
-                            )
+                        connection = pymysql.connect(
+                            host='195.2.71.149',
+                            port=3306,
+                            user='Bot',
+                            password='6622156Aabel!',
+                            database='reminder_bot',
+                            cursorclass=pymysql.cursors.DictCursor
+                        )
                                 #Запись в БД
-                            with connection.cursor() as cursor:
-                                cursor.execute(f"INSERT INTO reminder_bot.info_table VALUES ('{message.from_user.id}', '{data['date']}', '{data['time']}', '{data['description']}', 0)")
-                                connection.commit()
-                            connection.close()
-                            keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('Создать напоминание')).add(KeyboardButton('Мои напоминания'))
-                            await bot.send_message(chat_id= message.from_user.id, text='Ваше напоминание успешно создано. \nГлавное меню.', reply_markup=keyboard)
-                            #Закрыть состояние
-                            await state.finish()
+                        with connection.cursor() as cursor:
+                            cursor.execute(f"INSERT INTO reminder_bot.info_table VALUES ('{message.from_user.id}', '{data['date']}', '{data['time']}', '{data['description']}', 0)")
+                            connection.commit()
+                        connection.close()
+                        keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('Создать напоминание')).add(KeyboardButton('Мои напоминания'))
+                        await bot.send_message(chat_id= message.from_user.id, text='Ваше напоминание успешно создано. \nГлавное меню.', reply_markup=keyboard)
+                         #Закрыть состояние
+                        await state.finish()
                 else:
                     await bot.send_message(chat_id= message.from_user.id, text='😐Вы ввели неправильное время. \nПопробуйте еще раз. Время должно быть в будущем. \nФормат написания времени (чч:мм)')
             except:
@@ -180,13 +247,13 @@ async def buttons(message: types.Message, state: FSMContext):
 async def cancel_handler(message: types.Message, state):
     #Подключение базы данных
     connection = pymysql.connect(
-        host='localhost',
+        host='195.2.71.149',
         port=3306,
-        user='root',
-        password='qwert123',
+        user='Bot',
+        password='6622156Aabel!',
         database='reminder_bot',
         cursorclass=pymysql.cursors.DictCursor
-    )    
+    )
     with connection.cursor() as cursor:
         cursor.execute(f"SELECT * FROM reminder_bot.info_table WHERE `user_id` = '{message.from_user.id}' ORDER BY `date` ASC, `time` ASC")
         bd = cursor.fetchall()
@@ -196,8 +263,12 @@ async def cancel_handler(message: types.Message, state):
             ansMsg = '📄Список напоминаний:\n\n'
             id_reminder=[]
             for i in range(len(bd)):
-                id_reminder.append(bd[i]['id_reminder'])
-                ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
+                if bd[i]['date'] == None or bd[i]['time'] == None:
+                    id_reminder.append(bd[i]['id_reminder'])
+                    ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (заметка)' + '\n'
+                else:
+                    id_reminder.append(bd[i]['id_reminder'])
+                    ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
             ansMsg += '\n'
             ansMsg += 'Выберите номер для редактирования:👇'
             async with state.proxy() as data:
@@ -217,13 +288,13 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
     if call.data.split('_')[1] == 'number':
         #Подключение базы данных
         connection = pymysql.connect(
-            host='localhost',
+            host='195.2.71.149',
             port=3306,
-            user='root',
-            password='qwert123',
+            user='Bot',
+            password='6622156Aabel!',
             database='reminder_bot',
             cursorclass=pymysql.cursors.DictCursor
-        )    
+        )
         with connection.cursor() as cursor:
             cursor.execute(f"SELECT * FROM reminder_bot.info_table WHERE  `id_reminder` = {call.data.split('_')[0]}")
             bd = cursor.fetchall()
@@ -233,7 +304,18 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
                 data['oldDate'] = bd[0]['date']
                 data['oldTime'] = bd[0]['time']
                 data['message_id'] = call.message.message_id
-            ansMsg = f'Напоминание                                               \n\n📃Описание: ' + bd[0]['description'] + '\n\n📅Дата: ' + str(bd[0]['date']) + '\n\n⏱Время: ' + bd[0]['time'] + '\n\nВыберите действие👇'
+
+            ansMsg = f'Напоминание                                               \n\n📃Описание: ' + bd[0]['description']
+            if bd[0]['date'] == None:
+                ansMsg = f'Напоминание                                               \n\n📃Описание: ' + bd[0]['description'] + '\n\n📅Дата: -'
+            else:
+                ansMsg = f'Напоминание                                               \n\n📃Описание: ' + bd[0]['description'] + '\n\n📅Дата: ' + str(bd[0]['date']) 
+            if bd[0]['time'] == None:
+                ansMsg = ansMsg + f'\n\n⏱Время: -\n\nВыберите действие👇'
+            else:
+                ansMsg = ansMsg + f'\n\n⏱Время: ' + bd[0]['time'] + '\n\nВыберите действие👇'
+            
+            
             #Изменение текста в сообщении
             await bot.edit_message_text(chat_id=call.from_user.id,message_id=call.message.message_id, text=ansMsg)
         connection.close()
@@ -249,13 +331,13 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
     elif call.data.split('_')[1] == 'delete':
         #Подключение базы данных
         connection = pymysql.connect(
-            host='localhost',
+            host='195.2.71.149',
             port=3306,
-            user='root',
-            password='qwert123',
+            user='Bot',
+            password='6622156Aabel!',
             database='reminder_bot',
             cursorclass=pymysql.cursors.DictCursor
-        )    
+        )
         with connection.cursor() as cursor:
             #Запрос на удаление  
             cursor.execute(f"DELETE FROM reminder_bot.info_table WHERE  `id_reminder` = {call.data.split('_')[0]}")
@@ -285,13 +367,13 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
     elif call.data.split('_')[1] == 'back':
             #Подключение базы данных
             connection = pymysql.connect(
-                host='localhost',
+                host='195.2.71.149',
                 port=3306,
-                user='root',
-                password='qwert123',
+                user='Bot',
+                password='6622156Aabel!',
                 database='reminder_bot',
                 cursorclass=pymysql.cursors.DictCursor
-            )    
+            )
             with connection.cursor() as cursor:
                 cursor.execute(f"SELECT * FROM reminder_bot.info_table WHERE `user_id` = '{call.from_user.id}' ORDER BY `date` ASC, `time` ASC")
                 bd = cursor.fetchall()
@@ -301,8 +383,12 @@ async def buttons(call: types.CallbackQuery, state: FSMContext):
                     ansMsg = '📄Список напоминаний:\n\n'
                     id_reminder=[]
                     for i in range(len(bd)):
-                        id_reminder.append(bd[i]['id_reminder'])
-                        ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
+                        if bd[i]['date'] == None or bd[i]['time'] == None:
+                            id_reminder.append(bd[i]['id_reminder'])
+                            ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (заметка)' + '\n'
+                        else:
+                            id_reminder.append(bd[i]['id_reminder'])
+                            ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
                     ansMsg += '\n'
                     ansMsg += 'Выберите номер для редактирования:👇'
                     #Вызов формы для редактирования
@@ -322,10 +408,10 @@ async def load_description(message: types.Message, state: FSMContext):
         if len(message.text) <= 100 and (data['oldDescription'] != message.text):
             data['newDescription'] = message.text
             connection = pymysql.connect(
-                host='localhost',
+                host='195.2.71.149',
                 port=3306,
-                user='root',
-                password='qwert123',
+                user='Bot',
+                password='6622156Aabel!',
                 database='reminder_bot',
                 cursorclass=pymysql.cursors.DictCursor
             )
@@ -343,8 +429,12 @@ async def load_description(message: types.Message, state: FSMContext):
                     ansMsg = '📄Список напоминаний:\n\n'
                     id_reminder=[]
                     for i in range(len(bd)):
-                        id_reminder.append(bd[i]['id_reminder'])
-                        ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
+                        if bd[i]['date'] == None or bd[i]['time'] == None:
+                                id_reminder.append(bd[i]['id_reminder'])
+                                ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (заметка)' + '\n'
+                        else:
+                            id_reminder.append(bd[i]['id_reminder'])
+                            ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
                     ansMsg += '\n'
                     ansMsg += 'Выберите номер для редактирования:👇'
                     #Вызов формы для редактирования
@@ -385,10 +475,10 @@ async def buttons(message: types.Message, state: FSMContext):
                 if correctDate:
                     data['newDate'] = correct_date
                     connection = pymysql.connect(
-                        host='localhost',
+                        host='195.2.71.149',
                         port=3306,
-                        user='root',
-                        password='qwert123',
+                        user='Bot',
+                        password='6622156Aabel!',
                         database='reminder_bot',
                         cursorclass=pymysql.cursors.DictCursor
                     )
@@ -405,8 +495,12 @@ async def buttons(message: types.Message, state: FSMContext):
                             ansMsg = '📄Список напоминаний:\n\n'
                             id_reminder=[]
                             for i in range(len(bd)):
-                                id_reminder.append(bd[i]['id_reminder'])
-                                ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
+                                if bd[i]['date'] == None or bd[i]['time'] == None:
+                                    id_reminder.append(bd[i]['id_reminder'])
+                                    ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (заметка)' + '\n'
+                                else:
+                                    id_reminder.append(bd[i]['id_reminder'])
+                                    ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
                             ansMsg += '\n'
                             ansMsg += 'Выберите номер для редактирования:👇'
                             #Вызов формы для редактирования
@@ -434,19 +528,19 @@ async def buttons(message: types.Message, state: FSMContext):
                 try:
                     hour = message.text.split(':')[0]
                     min = message.text.split(':')[1]
-                    y = int(data['date'].split('.')[2])
-                    m = int(data['date'].split('.')[1])
-                    d = int(data['date'].split('.')[0])
+                    y = int(data['oldDate'].year)
+                    m = int(data['oldDate'].month)
+                    d = int(data['oldDate'].day)
                     nowDate = datetime.now()
                     data['newTime'] = message.text
                     if int(hour) <= 23 and int(min) <= 59:
                         if nowDate.year == y and nowDate.month == m and nowDate.day == d:    
                             if nowDate.hour < int(hour) or (nowDate.hour == int(hour) and nowDate.minute < int(min)):
                                 connection = pymysql.connect(
-                                    host='localhost',
+                                    host='195.2.71.149',
                                     port=3306,
-                                    user='root',
-                                    password='qwert123',
+                                    user='Bot',
+                                    password='6622156Aabel!',
                                     database='reminder_bot',
                                     cursorclass=pymysql.cursors.DictCursor
                                 )
@@ -463,8 +557,12 @@ async def buttons(message: types.Message, state: FSMContext):
                                         ansMsg = '📄Список напоминаний:\n\n'
                                         id_reminder=[]
                                         for i in range(len(bd)):
-                                            id_reminder.append(bd[i]['id_reminder'])
-                                            ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
+                                            if bd[i]['date'] == None or bd[i]['time'] == None:
+                                                id_reminder.append(bd[i]['id_reminder'])
+                                                ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (заметка)' + '\n'
+                                            else:
+                                                id_reminder.append(bd[i]['id_reminder'])
+                                                ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
                                         ansMsg += '\n'
                                         ansMsg += 'Выберите номер для редактирования:👇'
                                         #Вызов формы для редактирования
@@ -474,16 +572,18 @@ async def buttons(message: types.Message, state: FSMContext):
                                 await bot.edit_message_text(chat_id=message.from_user.id,message_id=data['message_id'], text=ansMsg)
                                 #Изменение клавиатуры. Id пользователя, Id сообщения, новая форма
                                 await bot.edit_message_reply_markup(message.from_user.id, data['message_id'], reply_markup=inlkb)
+                                keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('Создать напоминание')).add(KeyboardButton('Мои напоминания'))
+                                await bot.send_message(chat_id= message.from_user.id, text='Время успешно изменено.', reply_markup=keyboard)
                                 #Закрыть состояние
                                 await state.finish()
                             else:
                                 await bot.send_message(chat_id= message.from_user.id, text='😐Вы ввели неправильное время. \nПопробуйте еще раз. Время должно быть в будущем. \nФормат написания времени (чч:мм)')
                         else:
                             connection = pymysql.connect(
-                                host='localhost',
+                                host='195.2.71.149',
                                 port=3306,
-                                user='root',
-                                password='qwert123',
+                                user='Bot',
+                                password='6622156Aabel!',
                                 database='reminder_bot',
                                 cursorclass=pymysql.cursors.DictCursor
                             )
@@ -500,8 +600,12 @@ async def buttons(message: types.Message, state: FSMContext):
                                     ansMsg = '📄Список напоминаний:\n\n'
                                     id_reminder=[]
                                     for i in range(len(bd)):
-                                        id_reminder.append(bd[i]['id_reminder'])
-                                        ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
+                                        if bd[i]['date'] == None or bd[i]['time'] == None:
+                                            id_reminder.append(bd[i]['id_reminder'])
+                                            ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (заметка)' + '\n'
+                                        else:
+                                            id_reminder.append(bd[i]['id_reminder'])
+                                            ansMsg += str(i+1) + '. ' + bd[i]['description'] + ' (' + str(bd[i]['date']) + ' ' +  ' в ' + bd[i]['time'] + ')' + '\n'
                                     ansMsg += '\n'
                                     ansMsg += 'Выберите номер для редактирования:👇'
                                     #Вызов формы для редактирования
@@ -511,10 +615,10 @@ async def buttons(message: types.Message, state: FSMContext):
                             await bot.edit_message_text(chat_id=message.from_user.id,message_id=data['message_id'], text=ansMsg)
                             #Изменение клавиатуры. Id пользователя, Id сообщения, новая форма
                             await bot.edit_message_reply_markup(message.from_user.id, data['message_id'], reply_markup=inlkb)
+                            keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('Создать напоминание')).add(KeyboardButton('Мои напоминания'))
+                            await bot.send_message(chat_id= message.from_user.id, text='Время успешно изменено.', reply_markup=keyboard)
                             #Закрыть состояние
-                            await state.finish()
-                        keyboard = ReplyKeyboardMarkup(resize_keyboard = True).add(KeyboardButton('Создать напоминание')).add(KeyboardButton('Мои напоминания'))
-                        await bot.send_message(chat_id= message.from_user.id, text='Время успешно изменено.', reply_markup=keyboard)
+                            await state.finish()         
                     else:
                         await bot.send_message(chat_id= message.from_user.id, text='😐Вы ввели неправильное время. \nПопробуйте еще раз. Время должно быть в будущем. \nФормат написания времени (чч:мм)\nТак же написанное вами новое время не должно совпадать со старым.❗')
                 except:
@@ -535,13 +639,13 @@ async def checker_reminer():
     while True:
         #Подключение базы данных
         connection = pymysql.connect(
-            host='localhost',
+            host='195.2.71.149',
             port=3306,
-            user='root',
-            password='qwert123',
+            user='Bot',
+            password='6622156Aabel!',
             database='reminder_bot',
             cursorclass=pymysql.cursors.DictCursor
-        )    
+        )
         with connection.cursor() as cursor:
             #Дата
             date_today = str(datetime.now().date()).split('-')[-1] + '.' + str(datetime.now().date()).split('-')[1] + '.' + str(datetime.now().date()).split('-')[0]
